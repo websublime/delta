@@ -1,8 +1,9 @@
 # Release Workflow
 #
-# What: Automates versioning, changelog generation, git tagging, and npm publishing
-# How: Uses workspace-tools to process changesets and pnpm to publish packages
-# Why: Ensures consistent releases with proper versioning and changelog updates
+# What: Automates versioning, changelog generation, git tagging, and npm
+#       publishing for @websublime/delta.
+# How: Uses workspace-tools to process changesets and npm to publish.
+# Why: Ensures consistent releases with proper versioning and changelog updates.
 
 name: Release
 
@@ -20,7 +21,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     environment: PROD
-    if: github.repository == 'websublime/vite-open-api-server'
+    if: github.repository == 'websublime/delta'
     permissions:
       contents: write
       packages: write
@@ -36,21 +37,18 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
-          cache: "pnpm"
+          cache: "npm"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
-      - name: Build packages
-        run: pnpm build
+      - name: Build package
+        run: npm run build
 
       - name: Install workspace-tools
         run: |
@@ -77,22 +75,8 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # Configure npm authentication for pnpm
-          # Write the resolved NPM_TOKEN secret directly into ~/.npmrc
-          # This is required because pnpm needs explicit token in .npmrc (not env expansion)
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
-
-          # Debug: Verify token is set (shows length, not value)
-          echo "Token length: ${#NODE_AUTH_TOKEN}"
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "ERROR: NODE_AUTH_TOKEN is empty! Check NPM_TOKEN secret in GitHub."
+            echo "ERROR: NODE_AUTH_TOKEN is empty — check NPM_TOKEN secret." >&2
             exit 1
           fi
-
-          # Debug: Verify npm authentication
-          npm whoami || echo "npm whoami failed - token may be invalid"
-
-          # Publish packages in topological order (dependencies first)
-          # This ensures @websublime/vite-plugin-open-api-core is published before
-          # @websublime/vite-plugin-open-api-server which depends on it
-          pnpm -r --filter='./packages/*' publish --access public --no-git-checks
+          npm publish --access public
