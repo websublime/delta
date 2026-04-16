@@ -1,16 +1,17 @@
 # Continuous Integration Workflow
 #
-# What: Runs quality gates (lint, typecheck, test, build) on every PR and push to main
-# How: Uses GitHub Actions with parallel jobs and pnpm caching for fast feedback
-# Why: Ensures code quality and prevents broken code from being merged
+# What: Runs quality gates (lint, typecheck, test, build) on every PR and
+#       on every push to a non-main branch.
+# How: Uses GitHub Actions with parallel jobs and npm caching for fast feedback.
+# Why: Ensures code quality and prevents broken code from being merged.
+#      Pushes to main are skipped because the PR that merged already ran CI.
 
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches-ignore: [main]
   pull_request:
-    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -24,20 +25,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Run Biome
-        run: pnpm lint
+        run: npm run lint
 
   typecheck:
     name: Type Check
@@ -46,20 +44,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Run TypeScript
-        run: pnpm typecheck
+        run: npm run typecheck
 
   test:
     name: Test
@@ -68,20 +63,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Run tests
-        run: pnpm test
+        run: npm test
 
   build:
     name: Build
@@ -91,17 +83,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Build packages
-        run: pnpm build
+        run: npm run build
