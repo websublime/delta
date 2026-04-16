@@ -1,0 +1,98 @@
+# Release Workflow
+#
+# What: Automates versioning, changelog generation, git tagging, and npm publishing
+# How: Uses workspace-tools to process changesets and pnpm to publish packages
+# Why: Ensures consistent releases with proper versioning and changelog updates
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    environment: PROD
+    if: github.repository == 'websublime/vite-open-api-server'
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Install workspace-tools
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/websublime/workspace-tools/releases/latest/download/sublime_cli_tools-installer.sh | sh
+
+      - name: Check for changesets
+        id: changesets
+        run: |
+          COUNT=$(workspace --format json --log-level silent changeset list | jq '.data.total // 0')
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Found $COUNT changeset(s)"
+
+      - name: Create release
+        if: steps.changesets.outputs.count > 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          workspace bump --execute --git-commit --git-tag --force
+          git push origin main --follow-tags
+
+      - name: Publish to npm
+        if: steps.changesets.outputs.count > 0
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Configure npm authentication for pnpm
+          # Write the resolved NPM_TOKEN secret directly into ~/.npmrc
+          # This is required because pnpm needs explicit token in .npmrc (not env expansion)
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
+
+          # Debug: Verify token is set (shows length, not value)
+          echo "Token length: ${#NODE_AUTH_TOKEN}"
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "ERROR: NODE_AUTH_TOKEN is empty! Check NPM_TOKEN secret in GitHub."
+            exit 1
+          fi
+
+          # Debug: Verify npm authentication
+          npm whoami || echo "npm whoami failed - token may be invalid"
+
+          # Publish packages in topological order (dependencies first)
+          # This ensures @websublime/vite-plugin-open-api-core is published before
+          # @websublime/vite-plugin-open-api-server which depends on it
+          pnpm -r --filter='./packages/*' publish --access public --no-git-checks
