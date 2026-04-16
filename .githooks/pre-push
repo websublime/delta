@@ -3,9 +3,9 @@
 #
 # Bypass with:  git push --no-verify
 #
-# A changeset is any `.yaml` file directly inside `.changesets/`, excluding
-# `README-example.yaml`. Files under `.changesets/history/` do NOT count —
-# they represent already-released changesets.
+# A changeset is any `.json` file directly inside `.changesets/`. Files
+# under `.changesets/history/` do NOT count — they represent already-
+# released changesets. The `.yaml` example file is ignored by the glob.
 
 CHANGESET_DIR=".changesets"
 
@@ -16,7 +16,7 @@ if [ ! -d "$CHANGESET_DIR" ]; then
   exit 1
 fi
 
-count=$(find "$CHANGESET_DIR" -maxdepth 1 -type f -name "*.yaml" ! -name "README-example.yaml" 2>/dev/null | wc -l | tr -d ' ')
+count=$(find "$CHANGESET_DIR" -maxdepth 1 -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
 
 if [ "$count" -eq 0 ]; then
   echo "" >&2
