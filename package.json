@@ -1,0 +1,70 @@
+{
+  "name": "@websublime/delta",
+  "version": "0.1.0",
+  "description": "delta:// — Powerful, typed JSON model diffing for TypeScript",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./rfc6902": {
+      "types": "./dist/rfc6902.d.ts",
+      "import": "./dist/rfc6902.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "verify": "npm run lint && npm run typecheck && npm test",
+    "prepublishOnly": "npm run verify && npm run build"
+  },
+  "keywords": [
+    "diff",
+    "json",
+    "typescript",
+    "patch",
+    "json-patch",
+    "rfc6902",
+    "model",
+    "delta",
+    "deep-diff",
+    "structural-diff"
+  ],
+  "author": "websublime",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/websublime/delta.git"
+  },
+  "bugs": {
+    "url": "https://github.com/websublime/delta/issues"
+  },
+  "homepage": "https://github.com/websublime/delta#readme",
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
+    "@types/node": "^20.0.0",
+    "fast-check": "^4.6.0",
+    "fast-json-patch": "^3.1.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.1.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
