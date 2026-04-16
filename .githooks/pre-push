@@ -6,6 +6,14 @@
 # A changeset is any `.json` file directly inside `.changesets/`. Files
 # under `.changesets/history/` do NOT count — they represent already-
 # released changesets. The `.yaml` example file is ignored by the glob.
+#
+# Skipped automatically in CI: the release workflow archives changesets
+# into history/ before pushing the version-bump commit, so enforcing the
+# check there would deadlock the release.
+
+if [ "$CI" = "true" ] || [ -n "$GITHUB_ACTIONS" ]; then
+  exit 0
+fi
 
 CHANGESET_DIR=".changesets"
 
