@@ -36,3 +36,8 @@ Thumbs.db
 .cache/
 .npm/
 .eslintcache
+
+# Workspace Tools
+# Note: .changesets/ and repo.config.* should be versioned in git
+# Only backups are excluded
+.workspace-backups/
