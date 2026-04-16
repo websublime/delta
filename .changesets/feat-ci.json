@@ -1,0 +1,13 @@
+{
+  "branch": "feat/ci",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/delta"
+  ],
+  "changes": [],
+  "created_at": "2026-04-16T17:04:40.379594Z",
+  "updated_at": "2026-04-16T17:04:40.381291Z"
+}
