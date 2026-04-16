@@ -68,7 +68,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           workspace bump --execute --git-commit --git-tag --force
-          git push origin main --follow-tags
+          git push origin main --follow-tags --no-verify
 
       - name: Publish to npm
         if: steps.changesets.outputs.count > 0
