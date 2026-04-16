@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "fix/ci",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/delta"
+    ],
+    "changes": [],
+    "created_at": "2026-04-16T17:29:10.360707Z",
+    "updated_at": "2026-04-16T17:29:10.362266Z"
+  },
+  "release_info": {
+    "applied_at": "2026-04-16T17:31:58.363165115Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "b285b8b1b6f9a929718136f24176fc62d1114fd8",
+    "versions": {
+      "@websublime/delta": "0.1.1"
+    }
+  }
+}
