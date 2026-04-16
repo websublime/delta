@@ -32,6 +32,7 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "verify": "npm run lint && npm run typecheck && npm test",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "prepublishOnly": "npm run verify && npm run build"
   },
   "keywords": [

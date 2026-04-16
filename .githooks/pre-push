@@ -1,0 +1,32 @@
+#!/bin/sh
+# pre-push: require at least one changeset before allowing a push.
+#
+# Bypass with:  git push --no-verify
+#
+# A changeset is any `.yaml` file directly inside `.changesets/`, excluding
+# `README-example.yaml`. Files under `.changesets/history/` do NOT count —
+# they represent already-released changesets.
+
+CHANGESET_DIR=".changesets"
+
+if [ ! -d "$CHANGESET_DIR" ]; then
+  echo ""
+  echo "pre-push: $CHANGESET_DIR/ not found — is this a workspace-managed repo?" >&2
+  echo ""
+  exit 1
+fi
+
+count=$(find "$CHANGESET_DIR" -maxdepth 1 -type f -name "*.yaml" ! -name "README-example.yaml" 2>/dev/null | wc -l | tr -d ' ')
+
+if [ "$count" -eq 0 ]; then
+  echo "" >&2
+  echo "pre-push: no changesets queued in $CHANGESET_DIR/" >&2
+  echo "" >&2
+  echo "  Create one with:  workspace changeset add" >&2
+  echo "  Or bypass with:   git push --no-verify" >&2
+  echo "" >&2
+  exit 1
+fi
+
+echo "pre-push: $count changeset(s) queued"
+exit 0
