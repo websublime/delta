@@ -320,19 +320,25 @@ describe('mutation safety of DiffResult', () => {
   });
 });
 
-describe('moved + nested identity array (limitation)', () => {
-  it('roundtrip works even though nested granularity is lost', () => {
-    roundtrip(
-      [
-        { id: 1, tags: ['a', 'b'] },
-        { id: 2, tags: ['x'] },
-      ],
-      [
-        { id: 2, tags: ['x'] },
-        { id: 1, tags: ['b', 'a'] },
-      ],
-      { arrayIdentity: 'id' },
+describe('moved + nested identity array', () => {
+  it('roundtrip works and nestedDiff captures sub-array changes', () => {
+    const before = [
+      { id: 1, tags: ['a', 'b'] },
+      { id: 2, tags: ['x'] },
+    ];
+    const after = [
+      { id: 2, tags: ['x'] },
+      { id: 1, tags: ['b', 'a'] },
+    ];
+    roundtrip(before, after, { arrayIdentity: 'id' });
+
+    // nestedDiff on the moved+changed item captures the tag changes
+    const r = diff(before, after, { arrayIdentity: 'id' });
+    const moveOp = r.operations.find(
+      (op) => op.op === 'move' && op.nestedDiff !== undefined,
     );
+    expect(moveOp).toBeDefined();
+    expect(moveOp!.nestedDiff!.hasChanges).toBe(true);
   });
 });
 

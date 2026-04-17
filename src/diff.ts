@@ -435,20 +435,27 @@ function diffArraysByIdentity(
 
     if (opts.detectMoves) {
       if (moved) {
-        // Emit a single move op with full before/after snapshots.
-        // We intentionally do NOT recurse into the item even when it also
-        // changed — emitting nested ops at the destination index would
-        // produce paths that reference different items during unpatch
-        // (reverse reconstruction), corrupting the result.
-        // Consumers can diff op.oldValue vs op.value for field-level detail.
-        pendingMoves.push({
+        const moveOp: OpMove = {
           op: 'move',
           path,
           fromIndex: beforeEntry.index,
           toIndex: afterEntry.index,
           value: maybeClone(afterEntry.item, opts),
           oldValue: maybeClone(beforeEntry.item, opts),
-        });
+        };
+
+        // When the item also changed, compute a granular diff with paths
+        // relative to the item root. These are NOT emitted as top-level ops
+        // (that would break unpatch — destination-index paths reference
+        // different items after reverse reconstruction). Instead they live
+        // on the move op as informational metadata.
+        if (changed) {
+          const itemOps: DiffOp[] = [];
+          diffValues(beforeEntry.item, afterEntry.item, '', opts, depth + 1, itemOps);
+          moveOp.nestedDiff = buildResult(itemOps);
+        }
+
+        pendingMoves.push(moveOp);
       } else if (changed) {
         // Same position, value changed → recurse for granular ops
         diffValues(
