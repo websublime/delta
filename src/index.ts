@@ -3,9 +3,15 @@
 //  @websublime/delta
 // ─────────────────────────────────────────────
 
+// ── Core operations ──────────────────────────
+
 export { diff } from './diff.js';
-export { DeltaError, type DeltaErrorCode } from './errors.js';
 export { patch, unpatch } from './patch.js';
+export { changes, changesFromDiff } from './changes.js';
+
+// ── RFC 6902 adapter ─────────────────────────
+
+export { toRFC6902, toRFC6902JSON } from './rfc6902.js';
 export type {
   RFC6902Add,
   RFC6902Move,
@@ -14,8 +20,16 @@ export type {
   RFC6902Remove,
   RFC6902Replace,
 } from './rfc6902.js';
-export { toRFC6902, toRFC6902JSON } from './rfc6902.js';
+
+// ── Error handling ───────────────────────────
+
+export { DeltaError, type DeltaErrorCode } from './errors.js';
+
+// ── Types ────────────────────────────────────
+
 export type {
+  // Changes
+  ChangesResult,
   // Operations
   DiffOp,
   // Options
@@ -23,12 +37,13 @@ export type {
   // Result
   DiffResult,
   DiffSummary,
+  // Identity
   Identity,
   IdentityFn,
   IdentityKey,
+  // Values
   JsonArray,
   JsonObject,
-  // Values
   JsonPrimitive,
   JsonValue,
   OpAdd,
