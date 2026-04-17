@@ -21,6 +21,15 @@ import { cloneDeep, deepEqual, isArray, isObject, joinPath } from './utils.js';
 
 // ── Option resolution ─────────────────────────
 
+/**
+ * Compile an {@link Identity} descriptor into a callable {@link IdentityFn}.
+ *
+ * - `string`   → single-key getter (e.g. `'id'` → `item => item.id`)
+ * - `string[]` → composite-key getter joined with `::` separator
+ * - `function` → returned as-is
+ *
+ * Primitive (non-object) items always resolve to the sentinel `'__primitive__'`.
+ */
 function resolveIdentityFn(identity: Identity): IdentityFn {
   if (typeof identity === 'function') return identity;
 
@@ -40,6 +49,12 @@ function resolveIdentityFn(identity: Identity): IdentityFn {
   };
 }
 
+/**
+ * Normalise raw {@link DiffOptions} into a {@link ResolvedOptions} struct.
+ *
+ * Compiles identity descriptors into callable functions, builds the ignore
+ * set and prefix list, and applies defaults for every optional field.
+ */
 function resolveOptions(opts: DiffOptions = {}): ResolvedOptions {
   const rawIdentity = opts.arrayIdentity;
   let getIdentity: ResolvedOptions['getIdentity'];
@@ -89,6 +104,13 @@ function maybeClone<T extends JsonValue>(val: T, opts: ResolvedOptions): T {
 
 // ── Path filtering ────────────────────────────
 
+/**
+ * Check whether `path` should be skipped during diffing.
+ *
+ * A path is ignored when it matches an entry in `opts.ignore` (exact) or
+ * when it falls under any prefix listed in `opts.ignorePrefix` (the `/*`
+ * syntax from {@link DiffOptions.ignore}).
+ */
 function shouldIgnore(path: string, opts: ResolvedOptions): boolean {
   if (opts.ignore.has(path)) return true;
   for (const prefix of opts.ignorePrefix) {
@@ -99,6 +121,46 @@ function shouldIgnore(path: string, opts: ResolvedOptions): boolean {
 
 // ── Main diff entry point ─────────────────────
 
+/**
+ * Compute the structural diff between two JSON values.
+ *
+ * Returns a {@link DiffResult} containing an ordered list of operations that,
+ * when applied via {@link patch}, transform `before` into `after`.
+ *
+ * @param before  - The source (original) JSON value.
+ * @param after   - The target (modified) JSON value.
+ * @param options - Optional {@link DiffOptions} to control identity resolution,
+ *                  equality, move detection, recursion depth, path ignoring,
+ *                  and value cloning.
+ * @returns A {@link DiffResult} with operations, summary counters, and changed paths.
+ *
+ * @example
+ * ```ts
+ * import { diff } from '@websublime/delta';
+ *
+ * const before = { name: 'Alice', age: 30 };
+ * const after  = { name: 'Bob',   age: 30, role: 'admin' };
+ *
+ * const result = diff(before, after);
+ * // result.operations → [
+ * //   { op: 'replace', path: '/name', value: 'Bob', oldValue: 'Alice' },
+ * //   { op: 'add',     path: '/role', value: 'admin' }
+ * // ]
+ * // result.summary → { added: 1, removed: 0, replaced: 1, moved: 0, … }
+ * ```
+ *
+ * @example Identity-based array diff
+ * ```ts
+ * const before = { items: [{ id: 1, v: 'a' }, { id: 2, v: 'b' }] };
+ * const after  = { items: [{ id: 2, v: 'b' }, { id: 1, v: 'a' }] };
+ *
+ * const result = diff(before, after, { arrayIdentity: 'id' });
+ * // result.operations → [
+ * //   { op: 'move', path: '/items', fromIndex: 0, toIndex: 1, … },
+ * //   { op: 'move', path: '/items', fromIndex: 1, toIndex: 0, … }
+ * // ]
+ * ```
+ */
 export function diff(before: JsonValue, after: JsonValue, options?: DiffOptions): DiffResult {
   const opts = resolveOptions(options);
   const ops: DiffOp[] = [];
@@ -108,6 +170,13 @@ export function diff(before: JsonValue, after: JsonValue, options?: DiffOptions)
   return buildResult(ops);
 }
 
+/**
+ * Aggregate a flat list of {@link DiffOp} into a {@link DiffResult}.
+ *
+ * Counts operations by type, builds the {@link DiffSummary}, collects all
+ * touched paths into `changedPaths`, and detects `movedAndChanged` entries
+ * by comparing `value` and `oldValue` on move operations.
+ */
 function buildResult(ops: DiffOp[]): DiffResult {
   const summary: DiffSummary = {
     added: 0,
@@ -151,6 +220,20 @@ function buildResult(ops: DiffOp[]): DiffResult {
 
 // ── Recursive value diff ──────────────────────
 
+/**
+ * Recursively diff two JSON values and push resulting operations into `out`.
+ *
+ * Dispatches to {@link diffObjects}, {@link diffArrays}, or emits a `replace`
+ * operation depending on the type pair. Respects `maxDepth` — at the limit,
+ * sub-trees are compared as opaque blobs via `equal()`.
+ *
+ * @param before - Source value.
+ * @param after  - Target value.
+ * @param path   - Current RFC 6901 JSON Pointer path.
+ * @param opts   - Resolved diff options.
+ * @param depth  - Current recursion depth (0-based).
+ * @param out    - Accumulator for emitted operations.
+ */
 function diffValues(
   before: JsonValue,
   after: JsonValue,
@@ -189,6 +272,13 @@ function diffValues(
 
 // ── Object diff ───────────────────────────────
 
+/**
+ * Diff two plain JSON objects by their keys.
+ *
+ * Treats `undefined` values as absent (JSON semantics). For each key present
+ * in either side, emits `remove`, `add`, or recurses via {@link diffValues}
+ * for keys present in both.
+ */
 function diffObjects(
   before: JsonObject,
   after: JsonObject,
@@ -225,6 +315,13 @@ function diffObjects(
 
 // ── Array diff ────────────────────────────────
 
+/**
+ * Diff two JSON arrays, routing to the appropriate strategy.
+ *
+ * If an identity resolver is configured for this array path (checked by
+ * probing the first available item), delegates to {@link diffArraysByIdentity}.
+ * Otherwise falls back to the positional {@link diffArraysByLCS} algorithm.
+ */
 function diffArrays(
   before: JsonValue[],
   after: JsonValue[],
@@ -247,10 +344,18 @@ function diffArrays(
 
 // ── Identity-based array diff ─────────────────
 
+/**
+ * An entry in the identity map used by {@link diffArraysByIdentity}.
+ *
+ * The `key` is a composite string `"${rawId}:${occurrence}"` that uniquely
+ * identifies each array item — even when duplicate raw identities exist.
+ */
 interface IdentityEntry {
   /** Composite key = `${rawId}:${occurrence}`. Deterministic for duplicates. */
   key: string;
+  /** The array item value. */
   item: JsonValue;
+  /** The item's position in the source or target array. */
   index: number;
 }
 
@@ -279,6 +384,20 @@ function buildIdentityMap(
   return map;
 }
 
+/**
+ * Diff two arrays using identity-based matching.
+ *
+ * Builds identity maps for both sides, then classifies items into three groups:
+ * 1. **Removed** — present only in `before`.
+ * 2. **Matched** — present in both. May have moved (`fromIndex !== toIndex`)
+ *    and/or changed (values differ). Emits `move` or nested diff ops.
+ * 3. **Added** — present only in `after`.
+ *
+ * When `detectMoves` is `false`, reorders are decomposed into remove + add
+ * pairs instead of `move` operations.
+ *
+ * Emission order: removes (desc index) → moves (asc toIndex) → nested → adds (asc index).
+ */
 function diffArraysByIdentity(
   before: JsonValue[],
   after: JsonValue[],
@@ -389,6 +508,15 @@ function diffArraysByIdentity(
 
 // ── LCS-based (positional) array diff ─────────
 
+/**
+ * Diff two arrays using the Longest Common Subsequence (LCS) algorithm.
+ *
+ * Used when no identity resolver is configured for the array path. Items
+ * are matched purely by position and equality. Does not emit `move` ops —
+ * reorders appear as a combination of removes and adds.
+ *
+ * Emission order: removes (desc index) → nested diffs on kept items → adds (asc index).
+ */
 function diffArraysByLCS(
   before: JsonValue[],
   after: JsonValue[],

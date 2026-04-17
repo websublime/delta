@@ -3,9 +3,19 @@
 //  Types & interfaces
 // ─────────────────────────────────────────────
 
+/** JSON primitive value: string, number, boolean, or null. */
 export type JsonPrimitive = string | number | boolean | null;
+
+/**
+ * Any valid JSON value: a primitive, an object, or an array.
+ * This is the top-level value type used throughout the diff engine.
+ */
 export type JsonValue = JsonPrimitive | JsonObject | JsonArray;
+
+/** A plain JSON object with string keys and JSON values. */
 export type JsonObject = { [key: string]: JsonValue };
+
+/** A JSON array of arbitrary JSON values. */
 export type JsonArray = JsonValue[];
 
 // ── Operations ────────────────────────────────
@@ -46,27 +56,65 @@ export interface OpMove {
   oldValue: JsonValue; // original value (may differ if item also changed)
 }
 
+/**
+ * Discriminated union of all diff operation types.
+ *
+ * Narrow on `op.op` to access type-specific fields:
+ * ```ts
+ * for (const op of result.operations) {
+ *   switch (op.op) {
+ *     case 'add':     // op is OpAdd
+ *     case 'remove':  // op is OpRemove
+ *     case 'replace': // op is OpReplace
+ *     case 'move':    // op is OpMove
+ *   }
+ * }
+ * ```
+ */
 export type DiffOp = OpAdd | OpRemove | OpReplace | OpMove;
 
 // ── Summary ───────────────────────────────────
 
+/**
+ * Aggregate counters for a diff, broken down by operation type.
+ *
+ * Every field counts the number of operations of that kind. `total` is
+ * the sum of all operation counts.
+ */
 export interface DiffSummary {
+  /** Number of `add` operations. */
   added: number;
+  /** Number of `remove` operations. */
   removed: number;
+  /** Number of `replace` operations. */
   replaced: number;
+  /** Number of `move` operations (including those that also changed). */
   moved: number;
-  /** moves that also carried value changes */
+  /** Moves where `value !== oldValue` — the item changed while being reordered. */
   movedAndChanged: number;
+  /** Total number of operations across all types. */
   total: number;
 }
 
 // ── Result ────────────────────────────────────
 
+/**
+ * The result of a {@link diff} call.
+ *
+ * Contains the full list of operations, a statistical summary, and a set of
+ * changed paths for quick membership tests.
+ */
 export interface DiffResult {
+  /** `true` when at least one operation was emitted. */
   hasChanges: boolean;
+  /** Ordered list of diff operations. */
   operations: DiffOp[];
+  /** Aggregate counters broken down by operation type. */
   summary: DiffSummary;
-  /** Paths that were changed (for quick lookup) */
+  /**
+   * Set of JSON Pointer paths that were touched by at least one operation.
+   * Useful for quick `has()` look-ups without scanning the operations array.
+   */
   changedPaths: Set<string>;
 }
 
@@ -149,12 +197,23 @@ export interface DiffOptions {
 
 // ── Internal resolved options ─────────────────
 
+/**
+ * Normalised and compiled form of {@link DiffOptions}, used internally by the
+ * diff engine. Produced by `resolveOptions()` in `diff.ts`.
+ */
 export interface ResolvedOptions {
+  /** Compiled identity resolver — returns `null` when the path has no identity. */
   getIdentity: (path: string, item: JsonValue, index: number) => string | number | null;
+  /** Equality function used for value comparison. */
   equal: (a: JsonValue, b: JsonValue) => boolean;
+  /** Whether to emit `move` operations for reordered identity-keyed items. */
   detectMoves: boolean;
+  /** Maximum recursion depth before treating sub-trees as opaque blobs. */
   maxDepth: number;
+  /** Exact paths to ignore. */
   ignore: Set<string>;
+  /** Path prefixes to ignore (derived from `ignore` entries ending with `/*`). */
   ignorePrefix: string[];
+  /** Whether to deep-clone values stored on emitted operations. */
   cloneValues: boolean;
 }
