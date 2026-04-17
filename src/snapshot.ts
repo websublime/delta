@@ -28,7 +28,7 @@ import { isObject, splitPath } from './utils.js';
  *   { id: 1, message: 'hello', status: 'pending' },
  *   { id: 1, message: 'hello', status: 'approved' },
  * );
- * changes(r)  // → { status: 'approved' }
+ * snapshot(r)  // → { status: 'approved' }
  * ```
  *
  * @example Nested changes (sparse)
@@ -37,21 +37,21 @@ import { isObject, splitPath } from './utils.js';
  *   { user: { name: 'Alice', settings: { theme: 'dark', lang: 'en' } } },
  *   { user: { name: 'Alice', settings: { theme: 'light', lang: 'en' } } },
  * );
- * changes(r)  // → { user: { settings: { theme: 'light' } } }
+ * snapshot(r)  // → { user: { settings: { theme: 'light' } } }
  * ```
  *
  * @example Removals appear as null
  * ```ts
- * changes(diff({ a: 1, b: 2 }, { a: 1 }))  // → { b: null }
+ * snapshot(diff({ a: 1, b: 2 }, { a: 1 }))  // → { b: null }
  * ```
  *
  * @example Root replacement
  * ```ts
- * changes(diff(1, 2))            // → 2
- * changes(diff('a', { x: 1 }))   // → { x: 1 }
+ * snapshot(diff(1, 2))            // → 2
+ * snapshot(diff('a', { x: 1 }))   // → { x: 1 }
  * ```
  */
-export function changes(result: DiffResult): JsonValue | null {
+export function snapshot(result: DiffResult): JsonValue | null {
   if (!result.hasChanges) return null;
 
   // Root-level replace — the entire value changed.

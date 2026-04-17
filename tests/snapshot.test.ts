@@ -1,59 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { changes, diff } from '../src/index.js';
+import { snapshot, diff } from '../src/index.js';
 
-describe('changes — no changes', () => {
+describe('snapshot — no snapshot', () => {
   it('returns null for identical primitives', () => {
-    expect(changes(diff(42, 42))).toBeNull();
+    expect(snapshot(diff(42, 42))).toBeNull();
   });
 
   it('returns null for identical objects', () => {
-    expect(changes(diff({ a: 1, b: 2 }, { a: 1, b: 2 }))).toBeNull();
+    expect(snapshot(diff({ a: 1, b: 2 }, { a: 1, b: 2 }))).toBeNull();
   });
 
   it('returns null for identical arrays', () => {
-    expect(changes(diff([1, 2, 3], [1, 2, 3]))).toBeNull();
+    expect(snapshot(diff([1, 2, 3], [1, 2, 3]))).toBeNull();
   });
 });
 
-describe('changes — object diffs', () => {
+describe('snapshot — object diffs', () => {
   it('returns only added keys', () => {
-    expect(changes(diff({ a: 1 }, { a: 1, b: 2 }))).toEqual({ b: 2 });
+    expect(snapshot(diff({ a: 1 }, { a: 1, b: 2 }))).toEqual({ b: 2 });
   });
 
   it('returns null for removed keys', () => {
-    expect(changes(diff({ a: 1, b: 2 }, { a: 1 }))).toEqual({ b: null });
+    expect(snapshot(diff({ a: 1, b: 2 }, { a: 1 }))).toEqual({ b: null });
   });
 
   it('returns replaced values', () => {
-    expect(changes(diff({ a: 1 }, { a: 99 }))).toEqual({ a: 99 });
+    expect(snapshot(diff({ a: 1 }, { a: 99 }))).toEqual({ a: 99 });
   });
 
   it('splits additions, replacements and removals', () => {
     const before = { name: 'Alice', age: 30, email: 'a@b.c' };
     const after = { name: 'Bob', age: 30, role: 'admin' };
 
-    expect(changes(diff(before, after))).toEqual({
+    expect(snapshot(diff(before, after))).toEqual({
       name: 'Bob',
       role: 'admin',
       email: null,
     });
   });
 
-  it('handles multiple changes across different types', () => {
+  it('handles multiple snapshot across different types', () => {
     const before = { a: 1, b: 2, c: 3 };
     const after = { a: 99, c: 3, d: 4 };
 
-    const result = changes(diff(before, after));
+    const result = snapshot(diff(before, after));
     expect(result).toEqual({ a: 99, b: null, d: 4 });
   });
 });
 
-describe('changes — nested objects', () => {
+describe('snapshot — nested objects', () => {
   it('preserves sparse nested structure', () => {
     const before = { user: { name: 'Alice', settings: { theme: 'dark', lang: 'en' } } };
     const after = { user: { name: 'Alice', settings: { theme: 'light', lang: 'en' } } };
 
-    expect(changes(diff(before, after))).toEqual({
+    expect(snapshot(diff(before, after))).toEqual({
       user: { settings: { theme: 'light' } },
     });
   });
@@ -62,61 +62,61 @@ describe('changes — nested objects', () => {
     const before = { a: { b: { c: 1 } } };
     const after = { a: { b: { c: 1, d: 2 } } };
 
-    expect(changes(diff(before, after))).toEqual({ a: { b: { d: 2 } } });
+    expect(snapshot(diff(before, after))).toEqual({ a: { b: { d: 2 } } });
   });
 
   it('handles deeply nested removals as null', () => {
     const before = { a: { b: { c: 1, d: 2 } } };
     const after = { a: { b: { c: 1 } } };
 
-    expect(changes(diff(before, after))).toEqual({ a: { b: { d: null } } });
+    expect(snapshot(diff(before, after))).toEqual({ a: { b: { d: null } } });
   });
 
   it('handles mixed nested additions and removals', () => {
     const before = { x: { y: 1, z: 2 }, w: 3 };
     const after = { x: { y: 99 }, w: 3, v: 4 };
 
-    expect(changes(diff(before, after))).toEqual({
+    expect(snapshot(diff(before, after))).toEqual({
       x: { y: 99, z: null },
       v: 4,
     });
   });
 });
 
-describe('changes — root replacement', () => {
+describe('snapshot — root replacement', () => {
   it('returns the new value for primitive → primitive', () => {
-    expect(changes(diff(1, 2))).toBe(2);
+    expect(snapshot(diff(1, 2))).toBe(2);
   });
 
-  it('returns the new value when root type changes', () => {
-    expect(changes(diff('hello', { a: 1 }))).toEqual({ a: 1 });
+  it('returns the new value when root type snapshot', () => {
+    expect(snapshot(diff('hello', { a: 1 }))).toEqual({ a: 1 });
   });
 
   it('returns the new value when object → array', () => {
-    expect(changes(diff({ a: 1 }, [1, 2, 3]))).toEqual([1, 2, 3]);
+    expect(snapshot(diff({ a: 1 }, [1, 2, 3]))).toEqual([1, 2, 3]);
   });
 });
 
-describe('changes — arrays (positional)', () => {
-  it('represents array changes as sparse object with string keys', () => {
-    const result = changes(diff([1, 2, 3], [1, 99, 3]));
+describe('snapshot — arrays (positional)', () => {
+  it('represents array snapshot as sparse object with string keys', () => {
+    const result = snapshot(diff([1, 2, 3], [1, 99, 3]));
     // LCS: remove index 1, add index 1
     expect(result).toHaveProperty('1');
   });
 
   it('root-level array add', () => {
-    const result = changes(diff([1, 2], [1, 2, 3]));
+    const result = snapshot(diff([1, 2], [1, 2, 3]));
     expect(result).toEqual({ '2': 3 });
   });
 
   it('root-level array remove', () => {
-    const result = changes(diff([1, 2, 3], [1, 3]));
+    const result = snapshot(diff([1, 2, 3], [1, 3]));
     // Remove at index 1 (value 2)
     expect(result).toHaveProperty('1');
   });
 });
 
-describe('changes — arrays with identity', () => {
+describe('snapshot — arrays with identity', () => {
   it('includes moved items at their destination index', () => {
     const before = [
       { id: 1, name: 'Alice' },
@@ -127,7 +127,7 @@ describe('changes — arrays with identity', () => {
       { id: 1, name: 'Alice' },
     ];
 
-    const result = changes(diff(before, after, { arrayIdentity: 'id' }));
+    const result = snapshot(diff(before, after, { arrayIdentity: 'id' }));
     expect(result).toEqual({
       '0': { id: 2, name: 'Bob' },
       '1': { id: 1, name: 'Alice' },
@@ -138,7 +138,7 @@ describe('changes — arrays with identity', () => {
     const before = { items: [{ id: 1, v: 'a' }] };
     const after = { items: [{ id: 1, v: 'a' }, { id: 2, v: 'b' }] };
 
-    expect(changes(diff(before, after, { arrayIdentity: 'id' }))).toEqual({
+    expect(snapshot(diff(before, after, { arrayIdentity: 'id' }))).toEqual({
       items: { '1': { id: 2, v: 'b' } },
     });
   });
@@ -147,7 +147,7 @@ describe('changes — arrays with identity', () => {
     const before = { items: [{ id: 1, v: 'a' }, { id: 2, v: 'b' }] };
     const after = { items: [{ id: 1, v: 'a' }] };
 
-    const result = changes(diff(before, after, { arrayIdentity: 'id' })) as Record<string, Record<string, unknown>>;
+    const result = snapshot(diff(before, after, { arrayIdentity: 'id' })) as Record<string, Record<string, unknown>>;
     // The removed item index should be null
     const itemsChanges = result.items;
     const removedKey = Object.keys(itemsChanges).find((k) => itemsChanges[k] === null);
@@ -158,17 +158,17 @@ describe('changes — arrays with identity', () => {
     const before = { items: [{ id: 1, v: 'a' }, { id: 2, v: 'b' }] };
     const after = { items: [{ id: 2, v: 'X' }, { id: 1, v: 'a' }] };
 
-    const result = changes(diff(before, after, { arrayIdentity: 'id' })) as Record<string, Record<string, unknown>>;
+    const result = snapshot(diff(before, after, { arrayIdentity: 'id' })) as Record<string, Record<string, unknown>>;
     expect(result.items['0']).toEqual({ id: 2, v: 'X' });
   });
 });
 
-describe('changes — options forwarding via diff', () => {
+describe('snapshot — options forwarding via diff', () => {
   it('respects ignore option', () => {
     const before = { a: 1, b: 2, meta: { ts: 100 } };
     const after = { a: 99, b: 2, meta: { ts: 200 } };
 
-    expect(changes(diff(before, after, { ignore: ['/meta/ts'] }))).toEqual({ a: 99 });
+    expect(snapshot(diff(before, after, { ignore: ['/meta/ts'] }))).toEqual({ a: 99 });
   });
 
   it('respects maxDepth option', () => {
@@ -176,17 +176,17 @@ describe('changes — options forwarding via diff', () => {
     const after = { a: { b: { c: 2 } } };
 
     // At depth 1, the entire nested object is replaced as a blob
-    expect(changes(diff(before, after, { maxDepth: 1 }))).toEqual({
+    expect(snapshot(diff(before, after, { maxDepth: 1 }))).toEqual({
       a: { b: { c: 2 } },
     });
   });
 });
 
-describe('changes — only removals', () => {
+describe('snapshot — only removals', () => {
   it('returns object with null values for all removed keys', () => {
     const before = { a: 1, b: 2, c: 3 };
     const after = { a: 1 };
 
-    expect(changes(diff(before, after))).toEqual({ b: null, c: null });
+    expect(snapshot(diff(before, after))).toEqual({ b: null, c: null });
   });
 });
