@@ -30,7 +30,7 @@ if [ "$count" -eq 0 ]; then
   echo "" >&2
   echo "pre-push: no changesets queued in $CHANGESET_DIR/" >&2
   echo "" >&2
-  echo "  Create one with:  workspace changeset add" >&2
+  echo "  Create one with:  workspace changeset create" >&2
   echo "  Or bypass with:   git push --no-verify" >&2
   echo "" >&2
   exit 1

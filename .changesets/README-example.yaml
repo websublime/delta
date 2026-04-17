@@ -1,13 +1,13 @@
 # Example Changeset
 #
 # This is an example changeset file to help you understand the format.
-# When you're ready to create real changesets, use: workspace changeset add
+# When you're ready to create real changesets, use: workspace changeset create
 #
 # Important: Changesets should be committed to git as part of your PR.
 # They tell the CI/CD pipeline what version bumps to perform on merge.
 #
 # Workflow:
-# 1. Create a changeset: workspace changeset add
+# 1. Create a changeset: workspace changeset create
 # 2. Commit it with your changes: git add .changesets/your-changeset.yaml
 # 3. Push your branch: git push
 # 4. When merged to main, CI runs: workspace bump --execute
