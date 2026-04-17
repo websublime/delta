@@ -47,4 +47,6 @@ export type DeltaErrorCode =
   /** A path references a node that does not exist when it should. */
   | 'PATH_NOT_FOUND'
   /** A value is not representable as JSON (e.g. undefined in an array slot, function). */
-  | 'UNSUPPORTED_VALUE';
+  | 'UNSUPPORTED_VALUE'
+  /** An array is too large for the O(mn) LCS algorithm. Use `arrayIdentity` instead. */
+  | 'ARRAY_TOO_LARGE';

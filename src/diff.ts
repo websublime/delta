@@ -435,6 +435,12 @@ function diffArraysByIdentity(
 
     if (opts.detectMoves) {
       if (moved) {
+        // Emit a single move op with full before/after snapshots.
+        // We intentionally do NOT recurse into the item even when it also
+        // changed — emitting nested ops at the destination index would
+        // produce paths that reference different items during unpatch
+        // (reverse reconstruction), corrupting the result.
+        // Consumers can diff op.oldValue vs op.value for field-level detail.
         pendingMoves.push({
           op: 'move',
           path,

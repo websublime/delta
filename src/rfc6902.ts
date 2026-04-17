@@ -64,33 +64,65 @@ export type RFC6902Patch = RFC6902Op[];
  * Notes:
  * - `remove` ops lose `oldValue` (not part of RFC 6902)
  * - `replace` ops lose `oldValue`
- * - `move` ops are converted to RFC 6902 `move` with from/path as full paths
+ * - Delta `move` ops are decomposed into RFC 6902 `remove` + `add` pairs.
+ *   Delta moves use parallel reconstruction semantics (fromIndex/toIndex
+ *   reference the original and final arrays simultaneously), while RFC 6902
+ *   operations are applied strictly sequentially. Emitting RFC 6902 `move`
+ *   would produce incorrect results when multiple moves target the same array.
  */
 export function toRFC6902(result: DiffResult): RFC6902Patch {
-  const patch: RFC6902Patch = [];
+  const removes: RFC6902Remove[] = [];
+  const adds: RFC6902Add[] = [];
+  const replaces: RFC6902Replace[] = [];
 
   for (const op of result.operations) {
     switch (op.op) {
       case 'add':
-        patch.push({ op: 'add', path: op.path, value: op.value });
+        adds.push({ op: 'add', path: op.path, value: op.value });
         break;
       case 'remove':
-        patch.push({ op: 'remove', path: op.path });
+        removes.push({ op: 'remove', path: op.path });
         break;
       case 'replace':
-        patch.push({ op: 'replace', path: op.path, value: op.value });
+        replaces.push({ op: 'replace', path: op.path, value: op.value });
         break;
       case 'move': {
-        // Convert delta move (array-path + indices) to RFC 6902 move (full paths)
-        const fromPath = joinPath(op.path, op.fromIndex);
-        const toPath = joinPath(op.path, op.toIndex);
-        patch.push({ op: 'move', from: fromPath, path: toPath });
+        // Decompose into remove (at original index) + add (at final index).
+        removes.push({ op: 'remove', path: joinPath(op.path, op.fromIndex) });
+        adds.push({ op: 'add', path: joinPath(op.path, op.toIndex), value: op.value });
         break;
       }
     }
   }
 
-  return patch;
+  // For correct sequential application per RFC 6902:
+  // - Array removes must be applied in descending index order (higher indices
+  //   first so earlier indices are not shifted).
+  // - Array adds must be applied in ascending index order.
+  // Non-numeric path segments (object keys) are unaffected by ordering.
+  const lastSegmentIndex = (path: string): number => {
+    const parts = path.split('/');
+    return Number.parseInt(parts[parts.length - 1], 10);
+  };
+
+  removes.sort((a, b) => {
+    const iA = lastSegmentIndex(a.path);
+    const iB = lastSegmentIndex(b.path);
+    if (Number.isNaN(iA) || Number.isNaN(iB)) return 0;
+    return iB - iA;
+  });
+
+  adds.sort((a, b) => {
+    const iA = lastSegmentIndex(a.path);
+    const iB = lastSegmentIndex(b.path);
+    if (Number.isNaN(iA) || Number.isNaN(iB)) return 0;
+    return iA - iB;
+  });
+
+  // Order: removes → adds → replaces.
+  // Replaces target positions in the final array state, so they must come
+  // after the array has been fully reconstructed by removes and adds.
+  return [...removes, ...adds, ...replaces];
 }
 
 /**
