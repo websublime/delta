@@ -7,7 +7,7 @@
 
 export { diff } from './diff.js';
 export { patch, unpatch } from './patch.js';
-export { changes, changesFromDiff } from './changes.js';
+export { changes } from './changes.js';
 
 // ── RFC 6902 adapter ─────────────────────────
 
@@ -28,8 +28,6 @@ export { DeltaError, type DeltaErrorCode } from './errors.js';
 // ── Types ────────────────────────────────────
 
 export type {
-  // Changes
-  ChangesResult,
   // Operations
   DiffOp,
   // Options

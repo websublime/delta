@@ -18,9 +18,8 @@ const backward = unpatch(after, result)   // === before
 
 // Extract only what changed — ideal for PATCH payloads or audit logs
 import { changes } from '@websublime/delta'
-const { updated, removed } = changes(before, after, { arrayIdentity: 'id' })
-// updated → sparse object with only added/replaced/moved values
-// removed → ['/users/0/role'] (RFC 6901 paths that were deleted)
+const sparse = changes(result)
+// → { users: { '0': { id: 2, role: 'mod' }, '1': { id: 1, role: 'admin' } } }
 ```
 
 ## Features
@@ -29,7 +28,7 @@ const { updated, removed } = changes(before, after, { arrayIdentity: 'id' })
 - **Typed operations** — `add | remove | replace | move`, each with the right shape
 - **JSON Pointer paths** (RFC 6901) — `/users/0/role`, `~0` and `~1` escaping included
 - **Identity-based array diffing** — track items by id across reorders, adds, removes; deterministic even with duplicate ids
-- **Sparse changes** — `changes()` returns only what was added, replaced, moved, or removed — ready for PATCH payloads, form dirty tracking, or audit logs
+- **Sparse changes** — `changes()` returns a minimal object with only changed fields (removals as `null`) — ready for PATCH payloads, form dirty tracking, or audit logs
 - **Bidirectional** — `patch` and `unpatch` both work from the diff result alone; `oldValue` is always present on destructive ops
 - **RFC 6902 adapter** — export any diff as a standard JSON Patch
 - **Runtime validation** — `patch`/`unpatch` reject malformed inputs with a typed `DeltaError`
@@ -90,54 +89,43 @@ Neither function mutates its inputs. `unpatch` only needs `after` + the diff res
 Extract a sparse object containing only the values that changed — useful for HTTP PATCH payloads, form dirty tracking, optimistic UI updates, or audit logs.
 
 ```ts
-import { changes } from '@websublime/delta'
+import { diff, changes } from '@websublime/delta'
 
 const before = { name: 'Alice', age: 30, email: 'alice@example.com' }
 const after  = { name: 'Bob',   age: 30, role: 'admin' }
 
-const result = changes(before, after)
-
-result.updated  // { name: 'Bob', role: 'admin' }
-result.removed  // ['/email']
-result.hasChanges // true
-result.diff     // the full DiffResult for low-level access
+changes(diff(before, after))
+// → { name: 'Bob', role: 'admin', email: null }
 ```
 
-Nested structure is preserved — only the branches that actually changed appear in `updated`:
+Nested structure is sparse — only the branches that actually changed appear:
 
 ```ts
 const before = { user: { name: 'Alice', settings: { theme: 'dark', lang: 'en' } } }
 const after  = { user: { name: 'Alice', settings: { theme: 'light', lang: 'en' } } }
 
-const result = changes(before, after)
-result.updated  // { user: { settings: { theme: 'light' } } }
+changes(diff(before, after))
+// → { user: { settings: { theme: 'light' } } }
 ```
 
-When only removals exist (no additions or replacements), `updated` is `null`:
+Removed keys appear as `null`:
 
 ```ts
-const result = changes({ a: 1, b: 2 }, { a: 1 })
-result.updated  // null
-result.removed  // ['/b']
+changes(diff({ a: 1, b: 2 }, { a: 1 }))
+// → { b: null }
 ```
 
-All `DiffOptions` are supported — `arrayIdentity`, `ignore`, `maxDepth`, etc.:
+Root replacements return the new value directly:
 
 ```ts
-const result = changes(before, after, {
-  arrayIdentity: 'id',
-  ignore: ['/meta/*'],
-})
+changes(diff(1, 2))             // → 2
+changes(diff('hello', { x: 1 })) // → { x: 1 }
 ```
 
-If you already have a `DiffResult`, use `changesFromDiff` to avoid re-diffing:
+Returns `null` when nothing changed:
 
 ```ts
-import { diff, changesFromDiff } from '@websublime/delta'
-
-const diffResult = diff(before, after, options)
-// ... inspect diffResult.operations ...
-const sparse = changesFromDiff(diffResult)
+changes(diff({ a: 1 }, { a: 1 }))  // → null
 ```
 
 ### Identity-based array diffing
@@ -288,13 +276,6 @@ interface DiffSummary {
   moved: number          // moved, content unchanged
   movedAndChanged: number
   total: number
-}
-
-interface ChangesResult {
-  hasChanges: boolean
-  updated: JsonValue | null  // sparse object with added/replaced/moved values; null when only removals
-  removed: string[]          // RFC 6901 paths that were deleted
-  diff: DiffResult           // full diff result for low-level access
 }
 ```
 
