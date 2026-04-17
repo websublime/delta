@@ -8,36 +8,43 @@ import { joinPath } from './utils.js';
 
 // ── RFC 6902 types ────────────────────────────
 
+/** RFC 6902 `add` operation — inserts `value` at `path`. */
 export interface RFC6902Add {
   op: 'add';
   path: string;
   value: JsonValue;
 }
+/** RFC 6902 `remove` operation — deletes the value at `path`. */
 export interface RFC6902Remove {
   op: 'remove';
   path: string;
 }
+/** RFC 6902 `replace` operation — replaces the value at `path` with `value`. */
 export interface RFC6902Replace {
   op: 'replace';
   path: string;
   value: JsonValue;
 }
+/** RFC 6902 `move` operation — moves the value from `from` to `path`. */
 export interface RFC6902Move {
   op: 'move';
   from: string;
   path: string;
 }
+/** RFC 6902 `copy` operation — copies the value from `from` to `path`. */
 export interface RFC6902Copy {
   op: 'copy';
   from: string;
   path: string;
 }
+/** RFC 6902 `test` operation — asserts the value at `path` equals `value`. */
 export interface RFC6902Test {
   op: 'test';
   path: string;
   value: JsonValue;
 }
 
+/** Discriminated union of all RFC 6902 operation types. */
 export type RFC6902Op =
   | RFC6902Add
   | RFC6902Remove
@@ -46,6 +53,7 @@ export type RFC6902Op =
   | RFC6902Copy
   | RFC6902Test;
 
+/** An ordered list of RFC 6902 operations forming a complete JSON Patch document. */
 export type RFC6902Patch = RFC6902Op[];
 
 // ── Conversion ────────────────────────────────

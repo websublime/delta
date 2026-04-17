@@ -37,6 +37,17 @@ function validateDiffResult(result: unknown): asserts result is DiffResult {
   }
 }
 
+/**
+ * Validate that a single operation object is well-formed.
+ *
+ * Checks for the presence of required fields based on `op.op`:
+ * - `add` → `value`
+ * - `remove` → `oldValue`
+ * - `replace` → `value` + `oldValue`
+ * - `move` → `fromIndex` + `toIndex` + `value` + `oldValue`
+ *
+ * @throws {@link DeltaError} with code `INVALID_OPERATION` on any structural issue.
+ */
 function validateOp(op: unknown, index: number): asserts op is DiffOp {
   if (!isObject(op as JsonValue)) {
     throw new DeltaError('INVALID_OPERATION', `operations[${index}] must be an object`);
@@ -92,6 +103,15 @@ function validateOp(op: unknown, index: number): asserts op is DiffOp {
 
 // ── Internal helpers ──────────────────────────
 
+/**
+ * Navigate to the parent container and last key of a given JSON Pointer path.
+ *
+ * @param root - The document root.
+ * @param path - An RFC 6901 JSON Pointer (must have at least one segment).
+ * @returns An object with `parent` (the container) and `key` (the last segment).
+ * @throws {@link DeltaError} with code `INVALID_OPERATION` for root paths,
+ *         or `PATH_NOT_FOUND` when an intermediate node is not an object/array.
+ */
 function getParent(root: JsonValue, path: string): { parent: JsonValue; key: string } {
   const segs = splitPath(path);
   if (segs.length === 0) {
@@ -107,6 +127,15 @@ function getParent(root: JsonValue, path: string): { parent: JsonValue; key: str
   return { parent: cur, key: segs[segs.length - 1] };
 }
 
+/**
+ * Apply an `add` operation on the document.
+ *
+ * For array parents, inserts at the numeric index (or appends when the key
+ * is `'-'`). For object parents, sets the key via {@link safeSet}.
+ * The value is deep-cloned before insertion.
+ *
+ * @throws {@link DeltaError} on invalid index or non-container parent.
+ */
 function applyAdd(root: JsonValue, path: string, value: JsonValue): void {
   const { parent, key } = getParent(root, path);
   if (isArray(parent)) {
@@ -122,6 +151,14 @@ function applyAdd(root: JsonValue, path: string, value: JsonValue): void {
   }
 }
 
+/**
+ * Apply a `remove` operation on the document.
+ *
+ * For array parents, splices out the element at the numeric index.
+ * For object parents, deletes the key.
+ *
+ * @throws {@link DeltaError} on invalid index or non-container parent.
+ */
 function applyRemove(root: JsonValue, path: string): void {
   const { parent, key } = getParent(root, path);
   if (isArray(parent)) {
@@ -137,6 +174,13 @@ function applyRemove(root: JsonValue, path: string): void {
   }
 }
 
+/**
+ * Apply a `replace` operation on the document.
+ *
+ * Overwrites the value at `path` with a deep clone of `value`.
+ *
+ * @throws {@link DeltaError} on invalid index or non-container parent.
+ */
 function applyReplace(root: JsonValue, path: string, value: JsonValue): void {
   const { parent, key } = getParent(root, path);
   if (isArray(parent)) {
@@ -152,6 +196,17 @@ function applyReplace(root: JsonValue, path: string, value: JsonValue): void {
   }
 }
 
+/**
+ * Resolve a JSON Pointer path to the value it references in the document.
+ *
+ * Returns the root when `path` is `''`. Throws when an intermediate
+ * segment points to a non-container (null or primitive).
+ *
+ * @param root - The document root.
+ * @param path - An RFC 6901 JSON Pointer.
+ * @returns The referenced value.
+ * @throws {@link DeltaError} with code `PATH_NOT_FOUND`.
+ */
 function getNodeRef(root: JsonValue, path: string): JsonValue {
   if (path === '') return root;
   const segs = splitPath(path);
@@ -165,11 +220,22 @@ function getNodeRef(root: JsonValue, path: string): JsonValue {
   return cur;
 }
 
+/**
+ * Resolve a JSON Pointer path and return the value only if it is an array.
+ *
+ * @returns The array at `path`, or `null` when the value is not an array.
+ */
 function getArrayRef(root: JsonValue, path: string): JsonValue[] | null {
   const node = getNodeRef(root, path);
   return isArray(node) ? node : null;
 }
 
+/**
+ * Replace the value at `path` in the document with `value`.
+ *
+ * Navigates to the parent container and sets the last segment key.
+ * Used internally to swap out reconstructed arrays after move operations.
+ */
 function setNodeRef(root: JsonValue, path: string, value: JsonValue[]): void {
   const { parent, key } = getParent(root, path);
   if (isArray(parent)) {
@@ -292,13 +358,29 @@ function reconstructArrayReverse(
 
 // ── Group ops by array path ───────────────────
 
+/**
+ * A group of operations that all target the same array path.
+ *
+ * Used by {@link groupArrayOps} to batch operations for array
+ * reconstruction instead of sequential splice application.
+ */
 interface ArrayOpGroup {
+  /** Move operations within this array. */
   moves: OpMove[];
+  /** Add operations targeting child positions of this array. */
   adds: OpAdd[];
+  /** Remove operations targeting child positions of this array. */
   removes: OpRemove[];
+  /** Replace operations targeting child positions of this array. */
   replaces: OpReplace[];
 }
 
+/**
+ * Extract the parent path from a JSON Pointer.
+ *
+ * @returns The parent path, `''` for root-level paths, or `null` for the
+ *          root pointer itself.
+ */
 function parentOf(path: string): string | null {
   const segs = splitPath(path);
   if (segs.length === 0) return null;
@@ -306,6 +388,16 @@ function parentOf(path: string): string | null {
   return `/${segs.slice(0, -1).join('/')}`;
 }
 
+/**
+ * Group operations by the array path they belong to.
+ *
+ * Only arrays that contain at least one `move` operation are grouped.
+ * For each such array, all child add/remove/replace operations (whose
+ * parent path matches the array) are collected into the same
+ * {@link ArrayOpGroup}.
+ *
+ * @returns A map from array path to its grouped operations.
+ */
 function groupArrayOps(operations: DiffOp[]): Map<string, ArrayOpGroup> {
   const arrayPathsWithMoves = new Set<string>();
   for (const op of operations) {

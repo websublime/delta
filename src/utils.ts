@@ -7,10 +7,22 @@ import type { JsonObject, JsonValue } from './types.js';
 
 // ── Type guards ───────────────────────────────
 
+/**
+ * Check whether `val` is a plain JSON object (non-null, non-array object).
+ *
+ * @param val - The value to test.
+ * @returns `true` when `val` is a {@link JsonObject}.
+ */
 export function isObject(val: unknown): val is JsonObject {
   return val !== null && typeof val === 'object' && !Array.isArray(val);
 }
 
+/**
+ * Check whether `val` is an array of {@link JsonValue}.
+ *
+ * @param val - The value to test.
+ * @returns `true` when `val` is an array.
+ */
 export function isArray(val: unknown): val is JsonValue[] {
   return Array.isArray(val);
 }
@@ -30,6 +42,13 @@ export function deepEqual(a: JsonValue, b: JsonValue): boolean {
   return deepEqualInner(a, b, new WeakSet(), new WeakSet());
 }
 
+/**
+ * Inner recursive worker for {@link deepEqual}.
+ *
+ * Carries two `WeakSet`s to track visited object references (one per
+ * argument side) and throws {@link DeltaError} with code
+ * `CIRCULAR_REFERENCE` when a cycle is detected.
+ */
 function deepEqualInner(
   a: JsonValue,
   b: JsonValue,
@@ -81,22 +100,61 @@ function deepEqualInner(
 
 // ── JSON Pointer (RFC 6901) ───────────────────
 
+/**
+ * Escape a single path segment according to RFC 6901.
+ *
+ * `~` → `~0`, `/` → `~1`. Order matters: tilde is escaped first to avoid
+ * double-encoding.
+ */
 function escapeSegment(seg: string): string {
   return seg.replace(/~/g, '~0').replace(/\//g, '~1');
 }
 
+/**
+ * Unescape a single RFC 6901 path segment.
+ *
+ * `~1` → `/`, `~0` → `~`. Reversal order matters: slash is unescaped first
+ * to avoid double-decoding.
+ */
 function unescapeSegment(seg: string): string {
   return seg.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-/** Append one or more segments to a base path. */
+/**
+ * Append one or more segments to a base JSON Pointer path.
+ *
+ * Each segment is escaped per RFC 6901 before being appended. Numeric
+ * segments are stringified automatically.
+ *
+ * @param base - The base path (e.g. `''` for root, or `'/items'`).
+ * @param segs - One or more segments to append.
+ * @returns The concatenated RFC 6901 path.
+ *
+ * @example
+ * ```ts
+ * joinPath('', 'users', 0, 'name') // → '/users/0/name'
+ * ```
+ */
 export function joinPath(base: string, ...segs: (string | number)[]): string {
   return segs.reduce<string>((acc, seg) => {
     return `${acc}/${escapeSegment(String(seg))}`;
   }, base);
 }
 
-/** Split a JSON Pointer into unescaped segments. */
+/**
+ * Split an RFC 6901 JSON Pointer into its unescaped segments.
+ *
+ * The empty string `''` (root pointer) returns an empty array.
+ *
+ * @param path - An RFC 6901 JSON Pointer (e.g. `'/users/0/name'`).
+ * @returns Array of unescaped path segments.
+ *
+ * @example
+ * ```ts
+ * splitPath('/users/0/name') // → ['users', '0', 'name']
+ * splitPath('')              // → []
+ * ```
+ */
 export function splitPath(path: string): string[] {
   if (path === '') return [];
   return path.slice(1).split('/').map(unescapeSegment);
@@ -135,6 +193,13 @@ export function cloneDeep<T extends JsonValue>(val: T): T {
   return cloneDeepInner(val, new WeakSet()) as T;
 }
 
+/**
+ * Inner recursive worker for {@link cloneDeep}.
+ *
+ * Tracks visited references in a `WeakSet` and throws {@link DeltaError}
+ * with code `CIRCULAR_REFERENCE` when a cycle is detected. Object keys
+ * with `undefined` values are dropped to maintain JSON semantics.
+ */
 function cloneDeepInner(val: JsonValue, seen: WeakSet<object>): JsonValue {
   if (val === null || typeof val !== 'object') return val;
 

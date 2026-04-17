@@ -5,10 +5,16 @@
 
 import type { JsonValue } from './types.js';
 
+/**
+ * A matched index pair from the Longest Common Subsequence computation.
+ *
+ * Represents a single element that appears in both the `before` and `after`
+ * arrays at the given positions.
+ */
 export interface LCSMatch {
-  /** Index in the `before` array */
+  /** Index of the matched element in the `before` (source) array. */
   aIndex: number;
-  /** Index in the `after` array */
+  /** Index of the matched element in the `after` (target) array. */
   bIndex: number;
 }
 
