@@ -7,7 +7,7 @@
 
 export { diff } from './diff.js';
 export { patch, unpatch } from './patch.js';
-export { changes } from './changes.js';
+export { snapshot } from './snapshot.js';
 
 // ── RFC 6902 adapter ─────────────────────────
 

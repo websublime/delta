@@ -2,7 +2,7 @@
 
 **delta://** — Typed JSON model diffing for TypeScript.
 
-Diff any two JSON values and get a structured, typed result with JSON Pointer paths. Apply it forward with `patch`, reverse it with `unpatch`, extract a sparse changes object with `changes`, or export it as an RFC 6902 patch.
+Diff any two JSON values and get a structured, typed result with JSON Pointer paths. Apply it forward with `patch`, reverse it with `unpatch`, extract a sparse snapshot with `snapshot`, or export it as an RFC 6902 patch.
 
 ```ts
 import { diff, patch, unpatch } from '@websublime/delta'
@@ -17,8 +17,8 @@ const forward  = patch(before, result)    // === after
 const backward = unpatch(after, result)   // === before
 
 // Extract only what changed — ideal for PATCH payloads or audit logs
-import { changes } from '@websublime/delta'
-const sparse = changes(result)
+import { snapshot } from '@websublime/delta'
+const sparse = snapshot(result)
 // → { users: { '0': { id: 2, role: 'mod' }, '1': { id: 1, role: 'admin' } } }
 ```
 
@@ -28,7 +28,7 @@ const sparse = changes(result)
 - **Typed operations** — `add | remove | replace | move`, each with the right shape
 - **JSON Pointer paths** (RFC 6901) — `/users/0/role`, `~0` and `~1` escaping included
 - **Identity-based array diffing** — track items by id across reorders, adds, removes; deterministic even with duplicate ids
-- **Sparse changes** — `changes()` returns a minimal object with only changed fields (removals as `null`) — ready for PATCH payloads, form dirty tracking, or audit logs
+- **Sparse snapshot** — `snapshot()` returns a minimal object with only changed fields (removals as `null`) — ready for PATCH payloads, form dirty tracking, or audit logs
 - **Bidirectional** — `patch` and `unpatch` both work from the diff result alone; `oldValue` is always present on destructive ops
 - **RFC 6902 adapter** — export any diff as a standard JSON Patch
 - **Runtime validation** — `patch`/`unpatch` reject malformed inputs with a typed `DeltaError`
@@ -84,17 +84,17 @@ unpatch(after, result)  // { x: 1 }
 
 Neither function mutates its inputs. `unpatch` only needs `after` + the diff result — it never needs `before` because `oldValue` is always stored on destructive operations.
 
-### changes
+### snapshot
 
 Extract a sparse object containing only the values that changed — useful for HTTP PATCH payloads, form dirty tracking, optimistic UI updates, or audit logs.
 
 ```ts
-import { diff, changes } from '@websublime/delta'
+import { diff, snapshot } from '@websublime/delta'
 
 const before = { name: 'Alice', age: 30, email: 'alice@example.com' }
 const after  = { name: 'Bob',   age: 30, role: 'admin' }
 
-changes(diff(before, after))
+snapshot(diff(before, after))
 // → { name: 'Bob', role: 'admin', email: null }
 ```
 
@@ -104,28 +104,28 @@ Nested structure is sparse — only the branches that actually changed appear:
 const before = { user: { name: 'Alice', settings: { theme: 'dark', lang: 'en' } } }
 const after  = { user: { name: 'Alice', settings: { theme: 'light', lang: 'en' } } }
 
-changes(diff(before, after))
+snapshot(diff(before, after))
 // → { user: { settings: { theme: 'light' } } }
 ```
 
 Removed keys appear as `null`:
 
 ```ts
-changes(diff({ a: 1, b: 2 }, { a: 1 }))
+snapshot(diff({ a: 1, b: 2 }, { a: 1 }))
 // → { b: null }
 ```
 
 Root replacements return the new value directly:
 
 ```ts
-changes(diff(1, 2))             // → 2
-changes(diff('hello', { x: 1 })) // → { x: 1 }
+snapshot(diff(1, 2))             // → 2
+snapshot(diff('hello', { x: 1 })) // → { x: 1 }
 ```
 
 Returns `null` when nothing changed:
 
 ```ts
-changes(diff({ a: 1 }, { a: 1 }))  // → null
+snapshot(diff({ a: 1 }, { a: 1 }))  // → null
 ```
 
 ### Identity-based array diffing
