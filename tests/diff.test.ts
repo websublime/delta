@@ -143,6 +143,67 @@ describe('diff — identity arrays', () => {
     expect(moveOp?.value).toMatchObject({ id: 2, v: 'new' });
   });
 
+  it('nestedDiff is populated on moved+changed items', () => {
+    const r = diff(
+      [{ id: 1, role: 'admin' }, { id: 2, role: 'user' }],
+      [{ id: 2, role: 'mod' }, { id: 1, role: 'admin' }],
+      { arrayIdentity: 'id' },
+    );
+    const movedChanged = r.operations.find(
+      (op): op is OpMove => op.op === 'move' && op.nestedDiff !== undefined,
+    );
+    expect(movedChanged).toBeDefined();
+    expect(movedChanged!.nestedDiff!.hasChanges).toBe(true);
+    // Paths are relative to the item root
+    expect(movedChanged!.nestedDiff!.operations[0].path).toBe('/role');
+    expect(movedChanged!.nestedDiff!.summary.replaced).toBe(1);
+  });
+
+  it('nestedDiff is undefined on moved-only items', () => {
+    const r = diff(
+      [{ id: 1, v: 'a' }, { id: 2, v: 'b' }],
+      [{ id: 2, v: 'b' }, { id: 1, v: 'a' }],
+      { arrayIdentity: 'id' },
+    );
+    for (const op of r.operations) {
+      if (op.op === 'move') {
+        expect(op.nestedDiff).toBeUndefined();
+      }
+    }
+  });
+
+  it('nestedDiff captures deeply nested changes', () => {
+    const r = diff(
+      [{ id: 1, settings: { theme: 'dark', lang: 'en' } }, { id: 2 }],
+      [{ id: 2 }, { id: 1, settings: { theme: 'light', lang: 'en' } }],
+      { arrayIdentity: 'id' },
+    );
+    const moveOp = r.operations.find(
+      (op): op is OpMove => op.op === 'move' && op.nestedDiff !== undefined,
+    );
+    expect(moveOp).toBeDefined();
+    expect(moveOp!.nestedDiff!.operations[0].path).toBe('/settings/theme');
+  });
+
+  it('nestedDiff with multiple field changes', () => {
+    const r = diff(
+      [{ id: 1, a: 1, b: 2, c: 3 }, { id: 2 }],
+      [{ id: 2 }, { id: 1, a: 99, b: 2, d: 4 }],
+      { arrayIdentity: 'id' },
+    );
+    const moveOp = r.operations.find(
+      (op): op is OpMove => op.op === 'move' && op.nestedDiff !== undefined,
+    );
+    expect(moveOp).toBeDefined();
+    const nested = moveOp!.nestedDiff!;
+    expect(nested.summary.replaced).toBe(1); // a: 1 → 99
+    expect(nested.summary.removed).toBe(1);  // c removed
+    expect(nested.summary.added).toBe(1);    // d added
+    expect(nested.changedPaths.has('/a')).toBe(true);
+    expect(nested.changedPaths.has('/c')).toBe(true);
+    expect(nested.changedPaths.has('/d')).toBe(true);
+  });
+
   it('supports array identity key as string[]', () => {
     const r = diff([{ ns: 'a', name: 'x', v: 1 }], [{ ns: 'a', name: 'x', v: 2 }], {
       arrayIdentity: ['ns', 'name'],

@@ -47,20 +47,15 @@ export interface OpReplace {
  * `path` = array root (e.g. `/items`).
  * Applied AFTER removes and BEFORE adds.
  *
- * **Design note — moved-and-changed items:**
- * When an item moves AND its contents change, a single `move` op is emitted
- * carrying the full `value` (after) and `oldValue` (before). Granular
- * sub-field diffs are **not** emitted alongside the move. This is intentional:
- * emitting nested ops at the destination index would produce paths that refer
- * to different items after reverse reconstruction, breaking {@link unpatch}.
+ * When the item also changed during the move, the optional {@link nestedDiff}
+ * field contains a granular diff with paths **relative to the item root**
+ * (e.g. `/name`, not `/items/2/name`). This avoids the index-ambiguity
+ * problem that would break {@link unpatch} if those ops were emitted as
+ * top-level operations.
  *
- * To inspect which fields changed within a moved item, diff `op.oldValue`
- * against `op.value`:
- * ```ts
- * if (!deepEqual(op.value, op.oldValue)) {
- *   const fieldDiff = diff(op.oldValue, op.value);
- * }
- * ```
+ * `patch` and `unpatch` use only `value`/`oldValue` for reconstruction —
+ * `nestedDiff` is purely informational for consumers who need field-level
+ * detail on moved items.
  */
 export interface OpMove {
   op: 'move';
@@ -69,6 +64,26 @@ export interface OpMove {
   toIndex: number; // index in final array
   value: JsonValue; // final value of the item
   oldValue: JsonValue; // original value (may differ if item also changed)
+
+  /**
+   * Granular diff between `oldValue` and `value`, present only when the
+   * item changed during the move. Paths are relative to the item root.
+   *
+   * Note: top-level {@link DiffOptions.ignore} paths do not apply inside
+   * `nestedDiff` because those paths are absolute while `nestedDiff` paths
+   * are item-relative.
+   *
+   * @example
+   * ```ts
+   * for (const op of result.operations) {
+   *   if (op.op === 'move' && op.nestedDiff) {
+   *     // e.g. op.nestedDiff.operations[0].path === '/role'
+   *     console.log('fields changed:', op.nestedDiff.changedPaths);
+   *   }
+   * }
+   * ```
+   */
+  nestedDiff?: DiffResult;
 }
 
 /**
