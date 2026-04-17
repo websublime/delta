@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "feat/rework",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/delta"
+    ],
+    "changes": [],
+    "created_at": "2026-04-17T09:28:59.285429Z",
+    "updated_at": "2026-04-17T09:28:59.286518Z"
+  },
+  "release_info": {
+    "applied_at": "2026-04-17T09:34:41.832640903Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "b13ed7e58c28040fa4d35a9fb5878c9ded552032",
+    "versions": {
+      "@websublime/delta": "0.2.0"
+    }
+  }
+}

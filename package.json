@@ -1,6 +1,6 @@
 {
   "name": "@websublime/delta",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "delta:// — Powerful, typed JSON model diffing for TypeScript",
   "keywords": [
     "diff",
@@ -33,25 +33,25 @@
     "directory": null
   },
   "scripts": {
-    "test:watch": "vitest",
-    "lint:fix": "biome lint --write .",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome lint .",
+    "build": "tsc",
     "format": "biome format --write .",
     "check": "biome check --write .",
-    "test": "vitest run",
     "verify": "npm run lint && npm run typecheck && npm test",
-    "prepublishOnly": "npm run verify && npm run build",
-    "build": "tsc",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+    "typecheck": "tsc --noEmit",
+    "test:watch": "vitest",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "test": "vitest run",
+    "lint:fix": "biome lint --write .",
+    "lint": "biome lint .",
+    "prepublishOnly": "npm run verify && npm run build"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
     "fast-check": "^4.6.0",
     "fast-json-patch": "^3.1.1",
-    "vitest": "^3.1.2",
     "@types/node": "^20.0.0",
     "typescript": "^5.9.3",
-    "@biomejs/biome": "^2.4.12"
+    "vitest": "^3.1.2"
   },
   "engines": {
     "node": ">=18.0.0"
