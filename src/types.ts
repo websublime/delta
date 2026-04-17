@@ -225,52 +225,6 @@ export interface DiffOptions {
   cloneValues?: boolean;
 }
 
-// ── Changes ──────────────────────────────────
-
-/**
- * Result returned by {@link changes} and {@link changesFromDiff}.
- *
- * Provides a sparse representation of what changed between two documents,
- * split into values that were set (added, replaced, or moved) and paths
- * that were removed.
- *
- * @example
- * ```ts
- * const before = { name: 'Alice', age: 30, email: 'a@b.c' };
- * const after  = { name: 'Bob',   age: 30 };
- *
- * const result = changes(before, after);
- * result.updated  // → { name: 'Bob' }
- * result.removed  // → ['/email']
- * ```
- */
-export interface ChangesResult {
-  /** `true` when at least one change was detected. */
-  hasChanges: boolean;
-
-  /**
-   * Sparse object containing only the values that were **added**, **replaced**,
-   * or **moved** (at their destination index). Preserves nested structure —
-   * intermediate containers are plain objects even for array indices.
-   *
-   * `null` when no additions, replacements, or moves exist (i.e. only removals).
-   */
-  updated: JsonValue | null;
-
-  /**
-   * RFC 6901 JSON Pointer paths that were **removed** from the source document.
-   * The list is in the same order the remove operations appear in the diff.
-   */
-  removed: string[];
-
-  /**
-   * The complete {@link DiffResult} for low-level operation access.
-   * Useful when you need the full operation list, summary counters, or
-   * the `changedPaths` set beyond what `updated` / `removed` provide.
-   */
-  diff: DiffResult;
-}
-
 // ── Internal resolved options ─────────────────
 
 /**
