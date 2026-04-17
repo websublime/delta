@@ -231,6 +231,34 @@ describe('DiffResult runtime validation', () => {
   });
 });
 
+describe('LCS size guard', () => {
+  it('throws ARRAY_TOO_LARGE for very large positional arrays', () => {
+    // Two 6000-element arrays → 36M comparisons, exceeds the 25M limit
+    const big = Array.from({ length: 6000 }, (_, i) => i);
+    const big2 = Array.from({ length: 6000 }, (_, i) => i + 1);
+
+    expect(() => diff(big, big2)).toThrowError(DeltaError);
+    try {
+      diff(big, big2);
+    } catch (e) {
+      expect((e as DeltaError).code).toBe('ARRAY_TOO_LARGE');
+    }
+  });
+
+  it('does not throw for arrays within the limit', () => {
+    const a = Array.from({ length: 100 }, (_, i) => i);
+    const b = Array.from({ length: 100 }, (_, i) => i + 1);
+    expect(() => diff(a, b)).not.toThrow();
+  });
+
+  it('identity-based diff bypasses LCS entirely', () => {
+    // Large arrays with identity don't use LCS
+    const big = Array.from({ length: 6000 }, (_, i) => ({ id: i, v: i }));
+    const big2 = Array.from({ length: 6000 }, (_, i) => ({ id: i, v: i + 1 }));
+    expect(() => diff(big, big2, { arrayIdentity: 'id' })).not.toThrow();
+  });
+});
+
 describe('maxDepth edge cases', () => {
   it('maxDepth: 0 treats any change as root replace', () => {
     const r = diff({ a: 1 }, { a: 2 }, { maxDepth: 0 });
@@ -364,5 +392,29 @@ describe('escape/unescape path segments (RFC 6901)', () => {
     expect(r.operations[0].path).toBe('/a~1b');
     const r2 = diff({ 'c~d': 1 }, { 'c~d': 2 });
     expect(r2.operations[0].path).toBe('/c~0d');
+  });
+
+  it('identity arrays under keys with / round-trip correctly', () => {
+    roundtrip(
+      { 'x/y': [{ id: 1, v: 'a' }, { id: 2, v: 'b' }] },
+      { 'x/y': [{ id: 2, v: 'b' }, { id: 1, v: 'a' }] },
+      { arrayIdentity: 'id' },
+    );
+  });
+
+  it('identity arrays under keys with ~ round-trip correctly', () => {
+    roundtrip(
+      { 'a~b': [{ id: 1, v: 'x' }, { id: 2, v: 'y' }] },
+      { 'a~b': [{ id: 2, v: 'y' }, { id: 1, v: 'x' }] },
+      { arrayIdentity: 'id' },
+    );
+  });
+
+  it('identity arrays with moves + adds under special keys round-trip', () => {
+    roundtrip(
+      { 'x/y': [{ id: 1, v: 'a' }, { id: 2, v: 'b' }] },
+      { 'x/y': [{ id: 2, v: 'b' }, { id: 1, v: 'a' }, { id: 3, v: 'c' }] },
+      { arrayIdentity: 'id' },
+    );
   });
 });

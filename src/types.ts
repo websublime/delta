@@ -46,6 +46,21 @@ export interface OpReplace {
  * An array item was moved within the same array.
  * `path` = array root (e.g. `/items`).
  * Applied AFTER removes and BEFORE adds.
+ *
+ * **Design note — moved-and-changed items:**
+ * When an item moves AND its contents change, a single `move` op is emitted
+ * carrying the full `value` (after) and `oldValue` (before). Granular
+ * sub-field diffs are **not** emitted alongside the move. This is intentional:
+ * emitting nested ops at the destination index would produce paths that refer
+ * to different items after reverse reconstruction, breaking {@link unpatch}.
+ *
+ * To inspect which fields changed within a moved item, diff `op.oldValue`
+ * against `op.value`:
+ * ```ts
+ * if (!deepEqual(op.value, op.oldValue)) {
+ *   const fieldDiff = diff(op.oldValue, op.value);
+ * }
+ * ```
  */
 export interface OpMove {
   op: 'move';

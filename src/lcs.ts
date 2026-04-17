@@ -3,7 +3,16 @@
 //  Used for positional (non-identity) array diffs
 // ─────────────────────────────────────────────
 
+import { DeltaError } from './errors.js';
 import type { JsonValue } from './types.js';
+
+/**
+ * Maximum number of DP table entries (m × n) allowed for the LCS algorithm.
+ * Beyond this threshold, the O(mn) approach risks excessive memory usage
+ * (~100 MB at 25 M entries). Use `arrayIdentity` to diff large arrays
+ * efficiently via identity-based matching instead.
+ */
+const MAX_LCS_ENTRIES = 25_000_000;
 
 /**
  * A matched index pair from the Longest Common Subsequence computation.
@@ -33,6 +42,14 @@ export function computeLCS(
 ): LCSMatch[] {
   const m = a.length;
   const n = b.length;
+
+  if (m * n > MAX_LCS_ENTRIES) {
+    throw new DeltaError(
+      'ARRAY_TOO_LARGE',
+      `LCS diff of ${m}×${n} (${m * n} comparisons) exceeds the limit of ` +
+        `${MAX_LCS_ENTRIES}. Use the arrayIdentity option for large arrays`,
+    );
+  }
 
   // Use typed arrays for speed on large inputs
   const dp = new Uint32Array((m + 1) * (n + 1));

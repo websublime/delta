@@ -72,4 +72,44 @@ describe('RFC 6902 conformance (fast-json-patch applies our output)', () => {
       { numRuns: 200 },
     );
   });
+
+  it('identity-based 2-item swap is accepted by fast-json-patch', () => {
+    const before = [{ id: 1, v: 'a' }, { id: 2, v: 'b' }];
+    const after = [{ id: 2, v: 'b' }, { id: 1, v: 'a' }];
+    const ops = toRFC6902(diff(before, after, { arrayIdentity: 'id' }));
+    const patched = applyPatch(deepClone(before), ops, true, false).newDocument;
+    expect(patched).toEqual(after);
+  });
+
+  it('identity-based 3-item rotation is accepted by fast-json-patch', () => {
+    const before = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    const after = [{ id: 3 }, { id: 1 }, { id: 2 }];
+    const ops = toRFC6902(diff(before, after, { arrayIdentity: 'id' }));
+    const patched = applyPatch(deepClone(before), ops, true, false).newDocument;
+    expect(patched).toEqual(after);
+  });
+
+  it('identity-based move + add + remove is accepted by fast-json-patch', () => {
+    const before = { items: [{ id: 1 }, { id: 2 }, { id: 3 }] };
+    const after = { items: [{ id: 2 }, { id: 4 }] };
+    const ops = toRFC6902(diff(before, after, { arrayIdentity: 'id' }));
+    const patched = applyPatch(deepClone(before), ops, true, false).newDocument;
+    expect(patched).toEqual(after);
+  });
+
+  it('identity-based full reverse is accepted by fast-json-patch', () => {
+    const before = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+    const after = [{ id: 4 }, { id: 3 }, { id: 2 }, { id: 1 }];
+    const ops = toRFC6902(diff(before, after, { arrayIdentity: 'id' }));
+    const patched = applyPatch(deepClone(before), ops, true, false).newDocument;
+    expect(patched).toEqual(after);
+  });
+
+  it('identity-based moved+changed item is accepted by fast-json-patch', () => {
+    const before = [{ id: 1, role: 'admin' }, { id: 2, role: 'user' }];
+    const after = [{ id: 2, role: 'mod' }, { id: 1, role: 'admin' }];
+    const ops = toRFC6902(diff(before, after, { arrayIdentity: 'id' }));
+    const patched = applyPatch(deepClone(before), ops, true, false).newDocument;
+    expect(patched).toEqual(after);
+  });
 });

@@ -15,7 +15,7 @@ import type {
   OpRemove,
   OpReplace,
 } from './types.js';
-import { cloneDeep, isArray, isObject, safeSet, splitPath } from './utils.js';
+import { cloneDeep, isArray, isObject, joinPath, safeSet, splitPath } from './utils.js';
 
 // ── Runtime validation ────────────────────────
 
@@ -385,7 +385,7 @@ function parentOf(path: string): string | null {
   const segs = splitPath(path);
   if (segs.length === 0) return null;
   if (segs.length === 1) return '';
-  return `/${segs.slice(0, -1).join('/')}`;
+  return joinPath('', ...segs.slice(0, -1));
 }
 
 /**
